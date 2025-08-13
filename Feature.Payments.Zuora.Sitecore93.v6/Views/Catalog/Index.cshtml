@@ -1,0 +1,49 @@
+@model IEnumerable<Your.Feature.Payments.Controllers.CatalogController.ProductCard>
+@{ Layout = null; }
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Choose your plan</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .card h3 { margin: 0 0 .5rem 0; }
+    .price { font-size: 1.2rem; margin-bottom: .75rem; }
+    .muted { color: #777; font-size: .9rem; }
+    .row { display:flex; gap:.5rem; align-items:center; }
+    input[type=number] { width: 90px; }
+    .btn { background:#111; color:#fff; border:none; padding:.5rem .75rem; border-radius:8px; cursor:pointer; text-decoration:none; }
+    .btn[disabled] { opacity:.5; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <h2>Select a product</h2>
+  <div class="grid">
+  @foreach (var p in Model) {
+    <div class="card">
+      <h3>@p.Name</h3>
+      <div class="price">@p.Price</div>
+      <div class="muted">SKU: @p.Sku</div>
+      <div class="row" style="margin-top:.75rem;">
+        @if (p.PerUser) {
+          <label>Seats</label>
+          <input type="number" id="qty-@p.Sku" min="1" value="@p.DefaultQty"/>
+        } else {
+          <input type="hidden" id="qty-@p.Sku" value="1"/>
+        }
+        <a class="btn" href="javascript:void(0)" onclick="goCheckout('@p.Sku')" @(string.IsNullOrEmpty(p.RatePlanId) || string.IsNullOrEmpty(p.ChargeId) ? "disabled" : "")>Choose</a>
+      </div>
+    </div>
+  }
+  </div>
+<script>
+  function goCheckout(sku){
+    var qtyInput = document.getElementById('qty-' + sku);
+    var qty = qtyInput ? (parseInt(qtyInput.value || '1',10) || 1) : 1;
+    window.location = '@Url.Action("Step1","Checkout")' + '?sku=' + encodeURIComponent(sku) + '&qty=' + encodeURIComponent(qty);
+  }
+</script>
+</body>
+</html>

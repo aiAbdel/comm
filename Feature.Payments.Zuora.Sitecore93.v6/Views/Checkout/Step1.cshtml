@@ -1,0 +1,19 @@
+@model Your.Feature.Payments.Models.Step1_BillingAddressModel
+@using (Html.BeginForm("Step1", "Checkout", FormMethod.Post)) {
+  @Html.AntiForgeryToken()
+  <h3>Billing info</h3>
+  <div>Selected product: <strong>@(ViewBag.Sku ?? "PREMIUM")</strong>, Qty: <strong>@(ViewBag.Qty ?? 1)</strong></div>
+  <input type="hidden" name="sku" value="@(ViewBag.Sku ?? "PREMIUM")"/>
+  <input type="hidden" name="qty" value="@(ViewBag.Qty ?? 1)"/>
+
+  <input name="FirstName"  value="@Model.FirstName"  placeholder="First name" required />
+  <input name="LastName"   value="@Model.LastName"   placeholder="Last name" required />
+  <input name="Email"      value="@Model.Email"      placeholder="Email" type="email" required />
+  <input name="Address1"   value="@Model.Address1"   placeholder="Address" required />
+  <input name="City"       value="@Model.City"       placeholder="City" required />
+  <input name="State"      value="@Model.State"      placeholder="State/Region" />
+  <input name="PostalCode" value="@Model.PostalCode" placeholder="Postal Code" required />
+  <input name="Country"    value="@Model.Country"    placeholder="Country" required />
+  <button type="submit">Continue</button>
+}
+@if (!ViewData.ModelState.IsValid) { <div class="error">Please correct the fields.</div> }

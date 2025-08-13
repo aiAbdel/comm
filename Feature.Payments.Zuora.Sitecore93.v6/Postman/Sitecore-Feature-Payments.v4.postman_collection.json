@@ -1,0 +1,245 @@
+{
+  "info": {
+    "name": "Sitecore Feature.Payments (Zuora Proxy) v4",
+    "_postman_id": "zuora-proxy-v4",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Payment Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Payments/CreateSession",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Payments",
+            "CreateSession"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AccountId\": \"{{accountId}}\",\n  \"Amount\": 34.0,\n  \"Currency\": \"USD\",\n  \"ProcessPayment\": true,\n  \"StorePaymentMethod\": true,\n  \"PaymentGateway\": \"{{adyenGatewayInstance}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Set Default Payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Payments/SetDefaultPayment",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Payments",
+            "SetDefaultPayment"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AccountKey\": \"{{accountNumber}}\",\n  \"PaymentMethodId\": \"{{paymentMethodId}}\",\n  \"AutoPay\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Place Order (collect=false)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Orders/Place",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Orders",
+            "Place"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AccountNumber\": \"{{accountNumber}}\",\n  \"ProductRatePlanId\": \"{{ratePlanId}}\",\n  \"ProductRatePlanChargeId\": \"{{chargeId}}\",\n  \"Quantity\": 1,\n  \"Collect\": false\n}"
+        }
+      }
+    },
+    {
+      "name": "Preview Total",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Orders/PreviewTotal",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Orders",
+            "PreviewTotal"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AccountNumber\": \"{{accountNumber}}\",\n  \"ProductRatePlanId\": \"{{ratePlanId}}\",\n  \"ProductRatePlanChargeId\": \"{{chargeId}}\",\n  \"Quantity\": 1\n}"
+        }
+      }
+    },
+    {
+      "name": "Apply Payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Payments/Apply",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Payments",
+            "Apply"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"PaymentId\": \"{{paymentId}}\",\n  \"InvoiceId\": \"{{invoiceId}}\",\n  \"Amount\": 34.0\n}"
+        }
+      }
+    },
+    {
+      "name": "Webhook Receiver",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Zuora-Signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Webhooks/Zuora",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Webhooks",
+            "Zuora"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventType\": \"payment.processed\",\n  \"account\": {\n    \"accountNumber\": \"A00000001\"\n  },\n  \"subscription\": {\n    \"subscriptionNumber\": \"S00000001\"\n  },\n  \"payment\": {\n    \"status\": \"Processed\"\n  },\n  \"invoice\": {\n    \"invoiceNumber\": \"INV00000001\"\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "Admin - Clear Catalog Cache",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Admin-Secret",
+            "value": "{{adminSecret}}"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Admin/ClearCatalogCache",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Admin",
+            "ClearCatalogCache"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "host",
+      "value": "https://localhost:44300"
+    },
+    {
+      "key": "accountNumber",
+      "value": "A00000001"
+    },
+    {
+      "key": "accountId",
+      "value": "8ad0y00000..."
+    },
+    {
+      "key": "ratePlanId",
+      "value": "8ad0y00000..."
+    },
+    {
+      "key": "chargeId",
+      "value": "8ad0y00000..."
+    },
+    {
+      "key": "paymentMethodId",
+      "value": "8ad0y00000..."
+    },
+    {
+      "key": "paymentId",
+      "value": "8ad0y00000..."
+    },
+    {
+      "key": "invoiceId",
+      "value": "8ad0y00000..."
+    },
+    {
+      "key": "adyenGatewayInstance",
+      "value": "AdyenV2_GW_01"
+    },
+    {
+      "key": "webhookSignature",
+      "value": ""
+    },
+    {
+      "key": "adminSecret",
+      "value": ""
+    }
+  ]
+}
