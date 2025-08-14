@@ -1,0 +1,113 @@
+{
+  "info": {
+    "name": "Sitecore Feature.Payments (Zuora Proxy) v11",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Payment Session (save-only, routing)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Payments/CreateSession",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Payments",
+            "CreateSession"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AccountId\": \"{{accountId}}\",\n  \"Amount\": 34.0,\n  \"Currency\": \"USD\",\n  \"StorePaymentMethod\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Update Payment Method Address (type-aware)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Payments/UpdatePaymentMethodAddress",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Payments",
+            "UpdatePaymentMethodAddress"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"PaymentMethodId\": \"{{paymentMethodId}}\",\n  \"Address1\": \"123 Main St\",\n  \"City\": \"Boston\",\n  \"State\": \"MA\",\n  \"PostalCode\": \"02108\",\n  \"Country\": \"US\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Set Default Payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Payments/SetDefaultPayment",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Payments",
+            "SetDefaultPayment"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AccountKey\": \"{{accountNumber}}\",\n  \"PaymentMethodId\": \"{{paymentMethodId}}\",\n  \"AutoPay\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Place Order (collect:true, atomic)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{host}}/Orders/Place",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "Orders",
+            "Place"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AccountNumber\": \"{{accountNumber}}\",\n  \"ProductRatePlanId\": \"{{ratePlanId}}\",\n  \"ProductRatePlanChargeId\": \"{{chargeId}}\",\n  \"Quantity\": 1,\n  \"Collect\": true\n}"
+        }
+      }
+    }
+  ],
+  "variable": []
+}

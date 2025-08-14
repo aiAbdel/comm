@@ -1,0 +1,57 @@
+@model Your.Feature.Payments.Models.Step3_PaymentModel
+<h3>Payment</h3>
+<div id="zuora-form"></div>
+<button type="button" id="btn-new-pay" disabled>Save & Subscribe</button>
+<script src="https://static.zuora.com/checkout/checkout.js"></script>
+<script>
+(async function(){
+  var accountNumber = "@Model.AccountNumber";
+  var accountId = "@Model.AccountId";
+  var publishableKey = "@Model.PublishableKey";
+  var environment = "@Model.Environment";
+  var ratePlanId = "@Model.RatePlanId";
+  var chargeId = "@Model.ChargeId";
+  var qty = @Model.Quantity;
+
+
+
+  async function createPaymentSession(amount){
+    const resp = await fetch('/Payments/CreateSession', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ accountId: accountId, amount: amount, storePaymentMethod: true }) });
+    if(!resp.ok) throw new Error('Could not start payment');
+    return resp.json();
+  }
+
+  const amount = 34.00;
+  const sess = await createPaymentSession(amount);
+  const token = sess && (sess.token || sess.session || sess.id);
+  if(!token) throw new Error('Invalid session token');
+
+  const z = Zuora.init({ publishableKey: publishableKey, environment: environment });
+  const form = z.createPaymentForm({ token: token });
+  form.mount('#zuora-form');
+  form.on('ready', function(){ document.getElementById('btn-new-pay').disabled = false; });
+  form.on('error', function(e){ alert(e && e.message || 'Payment error'); });
+
+  document.getElementById('btn-new-pay').addEventListener('click', async function(){
+    try {
+      const res = await form.submit();
+      if(!res || !res.success){ alert((res && res.error && res.error.message) || 'Payment failed'); return; }
+      const paymentMethodId = res.paymentMethodId;
+
+      await fetch('/Payments/UpdatePaymentMethodAddress', {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ paymentMethodId: paymentMethodId, address1: '123 Main', city: 'Boston', state: 'MA', postalCode: '02108', country: 'US' })
+      });
+
+      await fetch('/Payments/SetDefaultPayment', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ accountKey: accountNumber, paymentMethodId: paymentMethodId, autoPay: true }) });
+
+      const orderResp = await fetch('/Orders/Place', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ accountNumber: accountNumber, productRatePlanId: ratePlanId, productRatePlanChargeId: chargeId, quantity: qty, collect: true})
+      });
+      if(!orderResp.ok){ const t = await orderResp.text(); alert('Order failed: ' + t); return; }
+      window.location = '/success';
+    } catch(err){ alert(err && err.message || 'Unexpected error'); }
+  });
+})();
+</script>
