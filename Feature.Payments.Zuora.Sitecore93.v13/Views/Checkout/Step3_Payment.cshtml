@@ -1,0 +1,71 @@
+@model Your.Feature.Payments.Models.Step3_PaymentModel
+@{ Layout = null; }
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Payment</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:#0b1020;color:#e7ecff;margin:0;padding:40px}
+    .panel{max-width:720px;margin:0 auto;background:linear-gradient(180deg,#121933,#0f1830);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+    .cta{display:inline-block;margin-top:12px;background:linear-gradient(180deg,#6c8cff,#5b77d8);color:white;text-decoration:none;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h3>Payment</h3>
+    <div id="zuora-form"></div>
+    <button type="button" id="btn-new-pay" class="cta" disabled>Save & Subscribe</button>
+  </div>
+<script src="https://static.zuora.com/checkout/checkout.js"></script>
+<script>
+(async function(){
+  var accountNumber = "@Model.AccountNumber";
+  var accountId = "@Model.AccountId";
+  var publishableKey = "@Model.PublishableKey";
+  var environment = "@Model.Environment";
+  var ratePlanId = "@Model.RatePlanId";
+  var chargeId = "@Model.ChargeId";
+  var qty = @Model.Quantity;
+
+  async function createPaymentSession(amount){
+    const resp = await fetch('/Payments/CreateSession', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ accountId: accountId, amount: 0, storePaymentMethod: true }) });
+    if(!resp.ok) throw new Error('Could not start payment');
+    return resp.json();
+  }
+
+  const sess = await createPaymentSession(0);
+  const token = sess && (sess.token || sess.session || sess.id);
+  if(!token) throw new Error('Invalid session token');
+
+  const z = Zuora.init({ publishableKey: publishableKey, environment: environment });
+  const form = z.createPaymentForm({ token: token });
+  form.mount('#zuora-form');
+  form.on('ready', function(){ document.getElementById('btn-new-pay').disabled = false; });
+  form.on('error', function(e){ alert(e && e.message || 'Payment error'); });
+
+  document.getElementById('btn-new-pay').addEventListener('click', async function(){
+    try {
+      const res = await form.submit();
+      if(!res || !res.success){ alert((res && res.error && res.error.message) || 'Payment failed'); return; }
+      const paymentMethodId = res.paymentMethodId;
+
+      await fetch('/Payments/UpdatePaymentMethodAddress', {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ paymentMethodId: paymentMethodId, address1: '123 Main', city: 'Boston', state: 'MA', postalCode: '02108', country: 'US' })
+      });
+
+      await fetch('/Payments/SetDefaultPayment', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ accountKey: accountNumber, paymentMethodId: paymentMethodId, autoPay: true }) });
+
+      const orderResp = await fetch('/Orders/Place', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ accountNumber: accountNumber, productRatePlanId: ratePlanId, productRatePlanChargeId: chargeId, quantity: qty, collect: true })
+      });
+      if(!orderResp.ok){ const t = await orderResp.text(); alert('Order failed: ' + t); return; }
+      window.location = '/Checkout/Success';
+    } catch(err){ alert(err && err.message || 'Unexpected error'); }
+  });
+})();
+</script>
+</body>
+</html>

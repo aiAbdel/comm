@@ -1,0 +1,49 @@
+@model IEnumerable<Your.Feature.Payments.Controllers.CatalogController.ProductCard>
+@{ Layout = null; }
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Choose your plan</title>
+  <style>
+    :root{--bg:#0b1020;--card:#121933;--text:#e7ecff;--muted:#9fb0ff;--cta:#6c8cff;}
+    body{background:linear-gradient(180deg,#0b1020,#0f1a3a);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:var(--text);margin:0;padding:40px}
+    h1{font-size:28px;margin:0 0 12px}
+    p.lead{margin:0 0 24px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+    .card{background:linear-gradient(180deg,#121933,#0f1830);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .sku{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9fb0ff80}
+    .name{font-size:22px;margin:6px 0 8px}
+    .price{font-weight:600;margin:4px 0 2px}
+    .per{font-size:12px;color:var(--muted)}
+    .qty{margin-top:10px}
+    input[type=number]{width:80px;background:#0c1330;color:var(--text);border:1px solid #2b3866;border-radius:8px;padding:6px}
+    .cta{display:inline-block;margin-top:12px;background:linear-gradient(180deg,#6c8cff,#5b77d8);color:white;text-decoration:none;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+  </style>
+</head>
+<body>
+  <h1>Choose your plan</h1>
+  <p class="lead">Pick <strong>Premium</strong>, <strong>Business</strong>, or <strong>Teams</strong>. You can change quantity for per‑user plans.</p>
+  <div class="grid">
+    @foreach (var p in Model) {
+      <div class="card">
+        <div class="sku">@p.Sku</div>
+        <div class="name">@p.Name</div>
+        <div class="price">@p.Currency @p.Price.ToString("0.00")/yr @if(p.PerUser){<span class="per">/ user</span>}</div>
+        <div class="qty">
+          @if(p.PerUser){
+            <label>Users:&nbsp;<input type="number" min="1" id="qty-@p.Sku" value="@p.DefaultQty" /></label>
+          } else {
+            <input type="hidden" id="qty-@p.Sku" value="1" />
+          }
+        </div>
+        <form method="get" action="@Url.Action("Step1","Checkout")">
+          <input type="hidden" name="sku" value="@p.Sku" />
+          <input type="hidden" name="qty" id="formqty-@p.Sku" value="@p.DefaultQty" />
+          <button class="cta" type="submit" onclick="document.getElementById('formqty-@p.Sku').value=document.getElementById('qty-@p.Sku').value;">Select</button>
+        </form>
+      </div>
+    }
+  </div>
+</body>
+</html>

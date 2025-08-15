@@ -1,0 +1,1 @@
+namespace Your.Feature.Payments.Services { public interface IProvisioningService { System.Threading.Tasks.Task GrantAccessAsync(string a,string s); System.Threading.Tasks.Task SuspendAccessAsync(string a,string r); System.Threading.Tasks.Task RecordInvoiceAsync(string a,string i);} }

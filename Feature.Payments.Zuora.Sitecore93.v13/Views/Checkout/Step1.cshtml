@@ -1,0 +1,27 @@
+@model Your.Feature.Payments.Models.Step1_BillingAddressModel
+@{ Layout = null; }
+<!doctype html>
+<html><head><meta charset="utf-8"/><title>Billing info</title>
+<style>
+body{font-family:Inter,system-ui,Arial,sans-serif;background:#0b1020;color:#e7ecff;margin:0;padding:40px}
+form{max-width:680px;margin:0 auto;background:linear-gradient(180deg,#121933,#0f1830);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+label{display:block;margin:8px 0 4px}
+input{width:100%;padding:10px;border-radius:8px;border:1px solid #2b3866;background:#0c1330;color:#e7ecff}
+.row{display:flex;gap:10px}
+.row>div{flex:1}
+.cta{margin-top:12px;background:linear-gradient(180deg,#6c8cff,#5b77d8);color:white;text-decoration:none;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+</style></head>
+<body>
+<h1>Billing info</h1>
+<form method="post" action="@Url.Action("Step1","Checkout")">
+  <input type="hidden" name="Sku" value="@Model.Sku" />
+  <input type="hidden" name="Quantity" value="@Model.Quantity" />
+  <label>First name</label><input name="FirstName" required />
+  <label>Last name</label><input name="LastName" required />
+  <label>Email</label><input name="Email" type="email" required />
+  <label>Address</label><input name="Address1" required />
+  <div class="row"><div><label>City</label><input name="City" required /></div><div><label>State/Region</label><input name="State" /></div></div>
+  <div class="row"><div><label>Postal Code</label><input name="PostalCode" required /></div><div><label>Country</label><input name="Country" value="US" required /></div></div>
+  <button class="cta" type="submit">Continue</button>
+</form>
+</body></html>

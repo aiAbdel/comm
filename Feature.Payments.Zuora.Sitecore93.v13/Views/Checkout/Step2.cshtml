@@ -1,0 +1,96 @@
+@model Your.Feature.Payments.Models.Step2_PreviewModel
+@{ Layout = null; }
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Preview your order</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:#0b1020;color:#e7ecff;margin:0;padding:40px}
+    .wrap{max-width:920px;margin:0 auto}
+    .panel{background:linear-gradient(180deg,#121933,#0f1830);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-bottom:16px}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .col{flex:1 1 320px}
+    h1{margin:0 0 12px}
+    .muted{color:#9fb0ff}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    td,th{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+    .totals{font-weight:600}
+    .cta{display:inline-block;margin-top:12px;background:linear-gradient(180deg,#6c8cff,#5b77d8);color:white;text-decoration:none;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Order preview</h1>
+    <div class="panel">
+      <div><strong>Plan:</strong> @Model.PlanSku</div>
+      <div><strong>Quantity:</strong> @Model.Quantity</div>
+      <div><strong>Account:</strong> @Model.AccountNumber</div>
+      <div class="muted" id="currencyLine"></div>
+    </div>
+
+    <div class="row">
+      <div class="col panel">
+        <h3>Charges</h3>
+        <table id="lines"><tbody></tbody></table>
+      </div>
+      <div class="col panel">
+        <h3>Totals</h3>
+        <table>
+          <tr><td>Subtotal</td><td id="subtotal" style="text-align:right">—</td></tr>
+          <tr><td>Tax</td><td id="tax" style="text-align:right">—</td></tr>
+          <tr class="totals"><td>Total due today</td><td id="total" style="text-align:right">—</td></tr>
+        </table>
+        <form method="get" action="@Url.Action("Step3","Checkout")">
+          <input type="hidden" name="sku" value="@Model.PlanSku" />
+          <input type="hidden" name="qty" value="@Model.Quantity" />
+          <button class="cta" type="submit">Continue to payment</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (async function(){
+      const accountNumber = "@Model.AccountNumber";
+      const qty = @Model.Quantity;
+      const body = { accountNumber: accountNumber, productRatePlanId: null, productRatePlanChargeId: null, quantity: qty };
+      try {
+        const resp = await fetch('/Orders/PreviewTotal', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if(!resp.ok){ throw new Error('Preview failed'); }
+        const preview = await resp.json();
+        let subtotal = 0, tax = 0, total = 0, currency = 'USD';
+        const tbody = document.querySelector('#lines tbody'); tbody.innerHTML = '';
+
+        if (preview.invoice) {
+          subtotal = Number(preview.invoice.subTotal || 0);
+          tax = Number(preview.invoice.taxAmount || 0);
+          total = Number(preview.invoice.amount || (subtotal + tax));
+          currency = preview.invoice.currency || currency;
+          const items = preview.invoice.items || [];
+          if (Array.isArray(items) && items.length) {
+            items.forEach(li => {
+              const tr = document.createElement('tr');
+              const name = li.chargeName || li.name || 'Charge';
+              const amt = Number(li.amount || li.chargeAmount || 0);
+              tr.innerHTML = `<td>${name}</td><td style="text-align:right">${currency} ${amt.toFixed(2)}</td>`;
+              tbody.appendChild(tr);
+            });
+          }
+        } else {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="2" class="muted">No detailed lines returned by preview.</td>`;
+          tbody.appendChild(tr);
+        }
+
+        document.getElementById('subtotal').textContent = subtotal ? `${currency} ${subtotal.toFixed(2)}` : '—';
+        document.getElementById('tax').textContent = tax ? `${currency} ${tax.toFixed(2)}` : '—';
+        document.getElementById('total').textContent = total ? `${currency} ${total.toFixed(2)}` : '—';
+        document.getElementById('currencyLine').textContent = `Currency: ${currency}`;
+      } catch(e){
+        document.getElementById('currencyLine').textContent = 'Preview unavailable';
+      }
+    })();
+  </script>
+</body>
+</html>
