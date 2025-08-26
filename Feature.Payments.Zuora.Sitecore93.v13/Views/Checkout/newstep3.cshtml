@@ -1,11 +1,7 @@
 @model Your.Feature.Payments.Models.Step3_PaymentModel
-@* Expecting:
-   Model.AccountNumber, Model.AccountId,
-   Model.PublishableKey, Model.Environment,   // e.g., "sandbox" | "production"
-   Model.RatePlanId, Model.ChargeId, Model.Quantity,
-   Model.Billing (FirstName, LastName, Address1, Address2, City, State, Postal, Country, Email, Phone)
-*@
+@{ /* Expected: AccountNumber, AccountId, PublishableKey, Environment, RatePlanId, ChargeId, Quantity, Currency, Amount (Total due today) */ }
 @{ Layout = null; }
+
 <!doctype html>
 <html>
 <head>
@@ -15,134 +11,118 @@
     body{font-family:Inter,system-ui,Arial,sans-serif;background:#0b1020;color:#e7ecff;margin:0;padding:40px}
     .panel{max-width:720px;margin:0 auto;background:linear-gradient(180deg,#121933,#0f1830);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
     .cta{display:inline-block;margin-top:12px;background:linear-gradient(180deg,#6c8cff,#5b77d8);color:white;text-decoration:none;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+    #receipt{margin-top:12px}
   </style>
 </head>
 <body>
   <div class="panel">
     <h3>Payment</h3>
-    <div id="zuora-form"></div>
-    <button type="button" id="btn-new-pay" class="cta" disabled>Save &amp; Subscribe</button>
+    <div id="zuora-payment-form"></div>
+    <div id="receipt"></div>
   </div>
 
-  <!-- ✅ Web Payment Form v3 -->
+  <!-- Payment Form v3 -->
   <script src="https://js.zuora.com/payment/v3/zuora.js"></script>
   <script>
-  (async function(){
-    // ---- hydrate from server model ----
+  (function(){
     const accountNumber = "@Model.AccountNumber";
     const accountId     = "@Model.AccountId";
     const publishableKey= "@Model.PublishableKey";
-    const environment   = "@Model.Environment";   // "sandbox" or "production"
+    const environment   = "@Model.Environment";  // 'sandbox' | 'production'
     const ratePlanId    = "@Model.RatePlanId";
     const chargeId      = "@Model.ChargeId";
     const qty           = @Model.Quantity;
+    const currency      = "@Model.Currency";     // from Step 2 preview
+    const amount        = @Model.Amount;         // total due today (number)
 
-    const billing = {
-      FirstName : "@(Model.Billing?.FirstName ?? "")",
-      LastName  : "@(Model.Billing?.LastName ?? "")",
-      Address1  : "@(Model.Billing?.Address1 ?? "")",
-      Address2  : "@(Model.Billing?.Address2 ?? "")",
-      City      : "@(Model.Billing?.City ?? "")",
-      State     : "@(Model.Billing?.State ?? "")",
-      Postal    : "@(Model.Billing?.Postal ?? "")",
-      Country   : "@(Model.Billing?.Country ?? "")",
-      Email     : "@(Model.Billing?.Email ?? "")",
-      Phone     : "@(Model.Billing?.Phone ?? "")"
-    };
+    // init hosted-style form
+    const zuora = Zuora(publishableKey, { environment });
 
-    // ---- helpers hitting your backend APIs ----
-    async function createPaymentSession(){
+    // helper: create session (server will call POST /web-payments/sessions)
+    async function createPaymentSession() {
       const resp = await fetch('/Payments/CreateSession', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ accountId: accountId, storePaymentMethod: true }) // ✅ no amount, save-only
-      });
-      if(!resp.ok) throw new Error('Could not start payment');
-      return resp.json();
-    }
-
-    async function updatePaymentMethodAddress(pmId){
-      const resp = await fetch('/Payments/UpdatePaymentMethodAddress', {
-        method:'POST', // keep consistent with your controller
-        headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
-          paymentMethodId: pmId,
           accountId: accountId,
-          accountHolderName: (billing.FirstName + " " + billing.LastName).trim(),
-          addressLine1: billing.Address1,
-          addressLine2: billing.Address2,
-          city: billing.City,
-          state: billing.State,
-          zipCode: billing.Postal,
-          country: billing.Country,
-          email: billing.Email,
-          phone: billing.Phone
+          currency:  currency,
+          amount:    amount,              // > 0 if gateway verifies
+          processPayment: false,
+          storePaymentMethod: true
         })
       });
-      if(!resp.ok) throw new Error('Failed to update billing on payment method');
+      if (!resp.ok) throw new Error('Could not start payment session');
+      return resp.json(); // should return the session token as string
     }
 
-    async function setDefaultPayment(pmId){
-      const resp = await fetch('/Payments/SetDefaultPayment', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ accountKey: accountNumber, paymentMethodId: pmId, autoPay: true })
-      });
-      if(!resp.ok) throw new Error('Failed to set default payment method');
-    }
-
-    async function placeOrder(){
-      const resp = await fetch('/Orders/Place', {
+    // helper: finalize after the PM is saved (server patches PM address, sets default, creates order with collect:true)
+    async function finalizeCheckout(paymentMethodId) {
+      const resp = await fetch('/Payments/Finalize', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
-          accountNumber: accountNumber,
+          accountNumber,
+          paymentMethodId,
           productRatePlanId: ratePlanId,
           productRatePlanChargeId: chargeId,
-          quantity: qty,
-          collect: true // ✅ atomic: bill + collect
+          quantity: qty
         })
       });
-      if(!resp.ok){
+      if (!resp.ok) {
         const t = await resp.text();
-        throw new Error(t || 'Order failed');
+        throw new Error(t || 'Finalize failed');
       }
+      return resp.json(); // expect { success, orderNumber, subscriptionNumber, invoiceNumber, paymentId }
     }
 
-    // ---- main flow ----
-    const sess = await createPaymentSession();
-    const token = sess && (sess.token || sess.session || sess.id);
-    if(!token) throw new Error('Invalid session token');
+    const configuration = {
+      locale: "en",
+      region: "US",
+      currency: currency,
+      amount: amount.toFixed ? amount.toFixed(2) : amount, // ensure string/2dp if needed
 
-    const z = Zuora.init({ publishableKey: publishableKey, environment: environment });
-    const form = z.createPaymentForm({ token: token });
-    form.mount('#zuora-form');
-    form.on('ready', function(){ document.getElementById('btn-new-pay').disabled = false; });
-    form.on('error', function(e){ alert((e && e.message) || 'Payment error'); });
+      // Called by the SDK when the user clicks Pay
+      createPaymentSession: () => new Promise((resolve, reject) => {
+        createPaymentSession()
+          .then((token) => resolve(token))
+          .catch((e) => reject(e));
+      }),
 
-    document.getElementById('btn-new-pay').addEventListener('click', async function(){
-      try {
-        // 1) Save payment method (no charge yet)
-        const res = await form.submit();
-        if(!res || !res.success) { alert((res && res.error && res.error.message) || 'Payment failed'); return; }
-        const paymentMethodId = res.paymentMethodId;
+      // Called when Zuora saves the PM (no capture since processPayment:false)
+      onComplete: async (result) => {
+        try {
+          if (!result || !result.success) {
+            alert(result && result.error && result.error.message || 'Saving payment method failed');
+            return;
+          }
+          // result.paymentMethodId is available here
+          const done = await finalizeCheckout(result.paymentMethodId);
 
-        // 2) Patch PM with validated Step‑1 billing address (AVS/fraud alignment)
-        await updatePaymentMethodAddress(paymentMethodId);
-
-        // 3) Make it default + AutoPay for renewals
-        await setDefaultPayment(paymentMethodId);
-
-        // 4) Create Order (collect:true) → subscription + invoice + charge
-        await placeOrder();
-
-        // 5) Done
-        window.location = '@Url.Action("Success","Checkout")';
-      } catch(err) {
-        console.error(err);
-        alert(err && err.message || 'Unexpected error');
+          if (done && done.success) {
+            const r = document.getElementById('receipt');
+            r.innerHTML = `
+              <div>
+                <div><strong>Order:</strong> ${done.orderNumber || ''}</div>
+                <div><strong>Subscription:</strong> ${done.subscriptionNumber || ''}</div>
+                <div><strong>Invoice:</strong> ${done.invoiceNumber || ''}</div>
+                <div><strong>PaymentId:</strong> ${done.paymentId || ''}</div>
+              </div>`;
+            // Optionally redirect to success:
+            // window.location = '@Url.Action("Success","Checkout")' + '?order=' + encodeURIComponent(done.orderNumber || '');
+          } else {
+            throw new Error('Finalize did not return success');
+          }
+        } catch (err) {
+          console.error(err);
+          alert(err.message || 'Unexpected error after payment method saved');
+        }
       }
-    });
+    };
+
+    // Create & mount the form
+    zuora.createPaymentForm(configuration)
+      .then((form) => form.mount("#zuora-payment-form"))
+      .catch((e) => { console.error(e); alert('Failed to initialize payment form'); });
   })();
   </script>
 </body>
